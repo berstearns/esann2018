@@ -64,9 +64,10 @@ for obs in sample:
     Z_prime = gen_binaryData(slices)
     X_prime = decode_binaryData(Z_prime)
     Y_prime = classifier.predict(X_prime)
-    print(X_prime)
-    #explainer = Lasso.fit(X_prime,Y_prime)
-    break
+
+    explainer = Lasso(alpha=10)
+    explainer.fit(X_prime,Y_prime)
+
 	#y = model.predict(decodedBinaryData)
 '''data.data[65,:]
 array([ 6.7,  3.1,  4.4,  1.4])
