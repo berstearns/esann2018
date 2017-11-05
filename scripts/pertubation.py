@@ -31,10 +31,11 @@ def randomFeature(sizeOfFeature, isQuant):
 	return feature
 
 
-def perturbQuali(binaryVector):
+def perturbQuali(binVector):
 	'''
 	Given a binary encoded qualitative feature, randomly change its value
 	'''
+	binaryVector = copy.deepcopy(binVector)
 
 	# Will somehow access the feature's size
 	sizeOfFeature = len(binaryVector)
@@ -52,14 +53,17 @@ def perturbQuali(binaryVector):
 
 	return binaryVector
 
-def conditional_perturbQuant(binaryVector):
+def conditional_perturbQuant(binVector):
 	'''
 	Given a binary encoded quantitative feature, randomly change its value
 	'''
+	binaryVector = copy.deepcopy(binVector)
+
 	middle = int(len(binaryVector)/2)
 	lastIdx = len(binaryVector)-1
-	
+
 	activatedBits = np.where(binaryVector == 1)[0]
+
 	if max(activatedBits) <= middle:
 		borderPos = activatedBits[0]
 	elif min(activatedBits) >= middle:
@@ -70,7 +74,7 @@ def conditional_perturbQuant(binaryVector):
 		borderPos_last = (borderPos == len(binaryVector)-1)
 		if borderPos_first or borderPos_last:
 			binaryVector[borderPos] = 0
-		
+
 		else:
 			# toss a coin randomly
 			coinIsHead = np.random.random() > 0.5
@@ -85,6 +89,8 @@ def conditional_perturbQuant(binaryVector):
 	else:
 		upDown = random.choice([-1,1])
 		binaryVector[borderPos+upDown] = 1
+
+	return binaryVector
 
 def random_perturbQuant(binaryVector):
 	'''
@@ -126,7 +132,7 @@ def random_perturbQuant(binaryVector):
 				while position < sizeOfFeature and binaryVector[position] == True:
 					binaryVector[position] = False
 					position += 1
-					
+
 	return binaryVector
 
 # Number of tests to be executed

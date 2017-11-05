@@ -127,14 +127,14 @@ class Discretization(object):
                 generates the discretization.
         """
         instance = list()
-        nbins_slice = [list_of_thresholds.shape[0] for list_of_thresholds in self.bins]
+        bins_slices = [x.shape[0] for x in self.bins]
         slices_list = list()
-        for nbins in nbins_slice:
-            idxs = np.arange(nbins)
+        for sli in bins_slices:
+            idxs = np.arange(sli)
             slices_list.append(sample[idxs])
             sample = np.delete(sample, idxs)
         for idx in range(len(slices_list)):
-            middle = (nbins_slice[idx]-1)/2
+            middle = (bins_slices[idx]-1)/2
             if slices_list[idx][int(middle+1)] == 1:
                 stds = np.where(slices_list[idx] == 1)[0][-1] - middle
 
