@@ -12,10 +12,10 @@ def selectSlice_randomly(slices):
     randomN = np.random.random()
     slicesLen= [len(slc) for slc in slices]
     sliceSumLen = sum(slicesLen)
-    slicesProb = [sliceLen/sliceSumLen  for sliceLen in slicesLen ]
+    slicesProb = [sliceLen/sliceSumLen  for sliceLen in slicesLen]
     slicesCum = np.cumsum(slicesProb)
     bools = slicesCum > randomN
-    positions = np.where(bools == True )[0]
+    positions = np.where(bools == True)[0]
     featureIdx = positions[0]
     return featureIdx, slices[featureIdx]
 
@@ -37,7 +37,6 @@ def gen_binaryData(slices,nData_toGen=10):
         new_obs = copy.deepcopy(slice_vals)
         new_obs[idx] = np.array(pert_slice)
         _Z.append(new_obs)
-
     return _Z
 
 def decode_binaryData(Z):
@@ -58,12 +57,23 @@ classifier = svm.SVC(gamma=0.001)
 classifier.fit(data.data,data.target)
 
 sample = X_t[:,:]
+sintetic_obs = list()
 
 for obs in sample:
     slices = [(val,"quant") for val in obj.get_slices_from_discretized_sample(obs)]
-    Z_prime = gen_binaryData(slices, nData_toGen=3)
-    X_prime = decode_binaryData(Z_prime)
-    Y_prime = classifier.predict(X_prime)
+    Z_prime = gen_binaryData(slices)
+    X_prime = np.array(decode_binaryData(Z_prime))
+    sintetic_obs.append(X_prime)
+    # Y_prime = classifier.predict(X_prime)
 
-    explainer = Lasso(alpha=10)
-    explainer.fit(X_prime,Y_prime)
+    # explainer = Lasso(alpha=10)
+    # explainer.fit(X_prime,Y_prime)
+
+sintetic_dataset = np.concatenate(sintetic_obs, axis=0)
+
+print('sintetic dataset has shape {0}'.format(sintetic_dataset.shape))
+Y_prime = classifier.predict(sintetic_dataset)
+from collections import Counter
+c = Counter(Y_prime)
+print('classifying sintetic observations...')
+print(c)
