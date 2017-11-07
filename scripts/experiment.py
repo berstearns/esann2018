@@ -1,9 +1,10 @@
 from discretization import Discretization
-from pertubation import conditional_perturbQuant,perturbQuali
+from pertubation import conditional_perturbQuant, perturbQuali
 from sklearn.linear_model import Lasso
 import numpy as np
 import copy
 import itertools
+import matplotlib.pyplot as plt
 
 flattening_binaryObs = lambda slices: list(
 itertools.chain.from_iterable(slices))
@@ -57,23 +58,39 @@ classifier = svm.SVC(gamma=0.001)
 classifier.fit(data.data,data.target)
 
 sample = X_t[:,:]
+np.random.shuffle(sample)
 sintetic_obs = list()
+bin_obs = list()
 
 for obs in sample:
     slices = [(val,"quant") for val in obj.get_slices_from_discretized_sample(obs)]
-    Z_prime = gen_binaryData(slices)
+    Z_prime = np.array(gen_binaryData(slices))
+    bin_obs.append([np.array(flattening_binaryObs(z)) for z in Z_prime])
     X_prime = np.array(decode_binaryData(Z_prime))
     sintetic_obs.append(X_prime)
-    # Y_prime = classifier.predict(X_prime)
-
-    # explainer = Lasso(alpha=10)
-    # explainer.fit(X_prime,Y_prime)
 
 sintetic_dataset = np.concatenate(sintetic_obs, axis=0)
-
+bin_dataset = np.concatenate(bin_obs, axis=0)
 print('sintetic dataset has shape {0}'.format(sintetic_dataset.shape))
+
 Y_prime = classifier.predict(sintetic_dataset)
 from collections import Counter
 c = Counter(Y_prime)
+
 print('classifying sintetic observations...')
 print(c)
+explainer = Lasso(alpha=0.05, fit_intercept=True)
+print('explaining...')
+
+explainer.fit(bin_dataset, Y_prime)
+pred = explainer.predict(bin_dataset)
+
+idx = np.random.randint(0,bin_dataset.shape[0])
+obs = bin_dataset[idx]
+fig, ax = plt.subplots()
+ax.set_xticks(np.arange(100))
+plt.bar(np.arange(obs.shape[0]), explainer.coef_)
+plt.title('observation {0}, y = {1}, y_hat = {2}'.format(idx, Y_prime[idx],
+    explainer.predict(obs.reshape(1,-1))))
+plt.grid()
+plt.show()
