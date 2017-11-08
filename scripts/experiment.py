@@ -79,18 +79,4 @@ c = Counter(Y_prime)
 
 print('classifying sintetic observations...')
 print(c)
-explainer = Lasso(alpha=0.05, fit_intercept=True)
-print('explaining...')
 
-explainer.fit(bin_dataset, Y_prime)
-pred = explainer.predict(bin_dataset)
-
-idx = np.random.randint(0,bin_dataset.shape[0])
-obs = bin_dataset[idx]
-fig, ax = plt.subplots()
-ax.set_xticks(np.arange(100))
-plt.bar(np.arange(obs.shape[0]), explainer.coef_)
-plt.title('observation {0}, y = {1}, y_hat = {2}'.format(idx, Y_prime[idx],
-    explainer.predict(obs.reshape(1,-1))))
-plt.grid()
-plt.show()
