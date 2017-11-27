@@ -35,7 +35,7 @@ def gen_binaryData(slices,nData_toGen=10):
         if SliceType == "quant":
             pert_slice = conditional_perturbQuant(sliceToPerturb)
         else:
-            pert_slice = perturbQuali(slice_)
+            pert_slice = perturbQuali(sliceToPerturb)
 
         new_obs_slices = copy.deepcopy(slice_vals)
         new_obs_slices[idx] = np.array(pert_slice)
@@ -62,17 +62,24 @@ def obs_importance(obs,generatedData):
     importance = np.exp(-sqrDistance)
     return importance
 
-def explain(disc_catX,disc_contX,real_features,real_y,obj,ft_types):
+def explain(disc_catX,disc_contX,real_features,real_y,obj,ft_types,Allcat_slices):
     classifier = svm.SVC(gamma=0.001)
     classifier.fit(real_features,real_y)
     sintetic_obs = list()
 
     for obs_idx,disc_cont_obs in enumerate(disc_contX):
+        cat_slices = [(observations[0][obs_idx],"categoricals") for observations in Allcat_slices]
         cont_slices = [(slic,"quant") for slic in obj.get_slices_from_discretized_sample(disc_cont_obs)]
-        cat_slices = [(slic,"cat") for slic in    
-        Z_prime = gen_binaryData(cont_slices)
-        Xcont_prime = np.array(decode_binaryData(Z_prime,obj))
-        X_prime = np.concatenate(
+        contBins = 0
+        for cSlic,type_ in cont_slices:
+            contBins+= len(cSlic)
+        slices = [tpl for type_slices in [cont_slices,cat_slices]
+                          for tpl in type_slices ]
+        Z_prime = gen_binaryData(slices)
+        Zcont_prime=np.array([genObs[:contBins] for genObs in Z_prime])
+        Zcat_prime=np.array([genObs[contBins:] for genObs in Z_prime])
+        Xcont_prime = np.array(decode_binaryData(Zcont_prime,obj))
+        X_prime = np.concatenate((Xcont_prime,Zcat_prime),axis=1)
         importances = [ obs_importance(real_features[obs_idx],x) for x in X_prime ]
         sintetic_obs.append(X_prime)
         Y_prime = classifier.predict(X_prime)
@@ -115,8 +122,11 @@ def experimentAustralian():
     cat_slices = []
     for ftIdx in ft_types["categoricals"]:
         categoricals = pd.get_dummies(aus_X[:,ftIdx]).values
+        aus_X = np.concatenate((aus_X,categoricals),axis=1)
+        cat_slices.append((categoricals,"categoricals"))
         categoricalX_t = np.concatenate((categoricalX_t,categoricals),axis=1)
     categoricalX_t = categoricalX_t[:,1:]
-    explain(categoricalX_t,continousX_t,aus_X,aus_y,obj,ft_types)
+    aus_X = np.delete(aus_X,ft_types["categoricals"],axis=1)
+    explain(categoricalX_t,continousX_t,aus_X,aus_y,obj,ft_types,cat_slices)
 
 experimentAustralian()
