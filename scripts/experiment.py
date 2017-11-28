@@ -1,8 +1,10 @@
 #from lasso import Lasso
+import xgboost as xgb
 from discretization import Discretization
-from pertubation import conditional_perturbQuant,perturbQuali
+from pertubation import random_perturbQuant,conditional_perturbQuant,perturbQuali
 from sklearn import svm
 from sklearn.linear_model import Lasso
+from sklearn.model_selection import cross_val_score
 import numpy as np
 import copy
 import itertools
@@ -33,7 +35,7 @@ def gen_binaryData(slices,nData_toGen=10):
         SliceType = slice_types[idx]
 
         if SliceType == "quant":
-            pert_slice = conditional_perturbQuant(sliceToPerturb)
+            pert_slice = random_perturbQuant(sliceToPerturb)
         else:
             pert_slice = perturbQuali(sliceToPerturb)
 
@@ -62,11 +64,9 @@ def obs_importance(obs,generatedData):
     importance = np.exp(-sqrDistance)
     return importance
 
-def explain(disc_catX,disc_contX,real_features,real_y,obj,ft_types,Allcat_slices):
-    classifier = svm.SVC(gamma=0.001)
-    classifier.fit(real_features,real_y)
+def explain(disc_catX,disc_contX,real_features,real_y,obj,ft_types,Allcat_slices,classifier):
     sintetic_obs = list()
-
+    explanations = []
     for obs_idx,disc_cont_obs in enumerate(disc_contX):
         cat_slices = [(observations[0][obs_idx],"categoricals") for observations in Allcat_slices]
         cont_slices = [(slic,"quant") for slic in obj.get_slices_from_discretized_sample(disc_cont_obs)]
@@ -88,7 +88,7 @@ def explain(disc_catX,disc_contX,real_features,real_y,obj,ft_types,Allcat_slices
         YwithImportance = [ y*np.sqrt(importances[pos]) for pos,y in enumerate(Y_prime)]
         explainer = Lasso(alpha=0.001)
         explainer.fit(ZwithImportance,YwithImportance)
-
+        explanations.append( (explainer,real_features,real_y ) )
     sintetic_dataset = np.concatenate(sintetic_obs, axis=0)
 
     print('sintetic dataset has shape {0}'.format(sintetic_dataset.shape))
@@ -97,6 +97,7 @@ def explain(disc_catX,disc_contX,real_features,real_y,obj,ft_types,Allcat_slices
     c = Counter(Y_prime)
     print('classifying sintetic observations...')
     print(c)
+    return explanations
 def loadAustralian():
 	X,y =[],[]
 	with open("data/australian.dat.txt") as f:
@@ -112,6 +113,11 @@ def loadNewsGroup():
 	newsgroups_train = fetch_20newsgroups(subset='train', categories=cats)
 from sklearn.datasets import load_iris
 
+def cv(X,y):
+    #classifier = svm.SVC(gamma=0.001)
+    clf = xgb.XGBClassifier(max_depth=3,n_estimators=300,learning_rate=0.05) 
+    scores = cross_val_score(clf,X,y,cv=5)
+    return np.mean(scores)
 def experimentAustralian():
     aus_X,aus_y=loadAustralian() 
     continousFt = [1,2,6]
@@ -127,6 +133,9 @@ def experimentAustralian():
         categoricalX_t = np.concatenate((categoricalX_t,categoricals),axis=1)
     categoricalX_t = categoricalX_t[:,1:]
     aus_X = np.delete(aus_X,ft_types["categoricals"],axis=1)
-    explain(categoricalX_t,continousX_t,aus_X,aus_y,obj,ft_types,cat_slices)
+
+    score = cv(aus_X,aus_y)
+    clf = xgb.XGBClassifier(max_depth=3,n_estimators=300,learning_rate=0.05).fit(aus_X,aus_y) 
+    explanations = explain(categoricalX_t,continousX_t,aus_X,aus_y,obj,ft_types,cat_slices,clf)
 
 experimentAustralian()
